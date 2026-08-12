@@ -145,9 +145,15 @@ async def server(recorder, monkeypatch):
     await client.aclose()
 
 
+_OP_GROUP = {op: group for group, ops in komga_mcp._GROUPS.items() for op in ops}
+
+
 async def call(server, name, **kwargs):
+    """Call `name` (an operation name) through the portmanteau group tool
+    that now hosts it, so every existing per-operation test keeps working
+    unmodified aside from this helper."""
     async with Client(server) as client:
-        return await client.call_tool(name, kwargs)
+        return await client.call_tool(_OP_GROUP[name], {"operation": name, "arguments": kwargs})
 
 
 CASES = [
@@ -302,3 +308,28 @@ def test_main_requires_api_key(monkeypatch):
     monkeypatch.delenv("KOMGA_API_KEY", raising=False)
     with pytest.raises(SystemExit):
         komga_mcp.main()
+
+
+# --- portmanteau grouping safety net --------------------------------------------
+
+def test_all_cases_grouped():
+    """Every operation in CASES must land in exactly one portmanteau group -
+    this is the safety net for the group-tool consolidation."""
+    case_names = {c[0] for c in CASES}
+    grouped_names = [n for names in komga_mcp._GROUPS.values() for n in names]
+    assert sorted(grouped_names) == sorted(case_names)
+    assert len(grouped_names) == len(set(grouped_names))
+
+
+async def test_group_tools_are_the_only_registered_tools(server):
+    async with Client(server) as c:
+        tools = await c.list_tools()
+    assert {t.name for t in tools} == set(komga_mcp._GROUPS)
+
+
+async def test_unknown_operation_rejected_by_schema(server):
+    # The Literal[...] enum on `operation` means an invalid value never
+    # reaches _register_group's dispatch body - pydantic rejects it first.
+    with pytest.raises(ToolError, match="validation error"):
+        async with Client(server) as c:
+            await c.call_tool("komga_libraries", {"operation": "not_a_real_operation"})
