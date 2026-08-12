@@ -1,6 +1,6 @@
 [project]
 name = "komga-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP server for Komga's REST API"
 license = "MIT"
 requires-python = ">=3.11"
