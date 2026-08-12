@@ -5,6 +5,7 @@ captured by httpx.MockTransport. No Komga instance or network is required.
 """
 
 import json
+import re
 
 import httpx
 import pytest
@@ -15,20 +16,116 @@ from fastmcp.exceptions import ToolError
 import komga_mcp
 
 
+KOMGA_CONTRACT = {
+    ("GET", r"^/api/v1/libraries$"),
+    ("GET", r"^/api/v1/libraries/(?P<id>[^/]+)$"),
+    ("POST", r"^/api/v1/libraries$"),
+    ("PATCH", r"^/api/v1/libraries/(?P<id>[^/]+)$"),
+    ("DELETE", r"^/api/v1/libraries/(?P<id>[^/]+)$"),
+    ("POST", r"^/api/v1/libraries/(?P<id>[^/]+)/scan$"),
+    ("POST", r"^/api/v1/libraries/(?P<id>[^/]+)/analyze$"),
+    ("POST", r"^/api/v1/libraries/(?P<id>[^/]+)/metadata/refresh$"),
+    ("POST", r"^/api/v1/libraries/(?P<id>[^/]+)/empty-trash$"),
+    ("POST", r"^/api/v1/series/list$"),
+    ("POST", r"^/api/v1/series/list/alphabetical-groups$"),
+    ("GET", r"^/api/v1/series/(?P<id>[^/]+)$"),
+    ("GET", r"^/api/v1/series/(?P<id>[^/]+)/collections$"),
+    ("GET", r"^/api/v1/series/latest$"),
+    ("GET", r"^/api/v1/series/new$"),
+    ("GET", r"^/api/v1/series/updated$"),
+    ("GET", r"^/api/v1/series/(?P<id>[^/]+)/thumbnails$"),
+    ("PATCH", r"^/api/v1/series/(?P<id>[^/]+)/metadata$"),
+    ("POST", r"^/api/v1/series/(?P<id>[^/]+)/metadata/refresh$"),
+    ("POST", r"^/api/v1/series/(?P<id>[^/]+)/analyze$"),
+    ("POST", r"^/api/v1/series/(?P<id>[^/]+)/read-progress$"),
+    ("DELETE", r"^/api/v1/series/(?P<id>[^/]+)/read-progress$"),
+    ("POST", r"^/api/v1/books/list$"),
+    ("GET", r"^/api/v1/books/(?P<id>[^/]+)$"),
+    ("GET", r"^/api/v1/books/(?P<id>[^/]+)/pages$"),
+    ("GET", r"^/api/v1/books/(?P<id>[^/]+)/next$"),
+    ("GET", r"^/api/v1/books/(?P<id>[^/]+)/previous$"),
+    ("GET", r"^/api/v1/books/(?P<id>[^/]+)/readlists$"),
+    ("GET", r"^/api/v1/books/(?P<id>[^/]+)/thumbnails$"),
+    ("GET", r"^/api/v1/books/latest$"),
+    ("GET", r"^/api/v1/books/ondeck$"),
+    ("GET", r"^/api/v1/books/duplicates$"),
+    ("PATCH", r"^/api/v1/books/(?P<id>[^/]+)/metadata$"),
+    ("PATCH", r"^/api/v1/books/metadata$"),
+    ("POST", r"^/api/v1/books/(?P<id>[^/]+)/metadata/refresh$"),
+    ("POST", r"^/api/v1/books/(?P<id>[^/]+)/analyze$"),
+    ("PATCH", r"^/api/v1/books/(?P<id>[^/]+)/read-progress$"),
+    ("DELETE", r"^/api/v1/books/(?P<id>[^/]+)/read-progress$"),
+    ("GET", r"^/api/v1/collections$"),
+    ("GET", r"^/api/v1/collections/(?P<id>[^/]+)$"),
+    ("GET", r"^/api/v1/collections/(?P<id>[^/]+)/series$"),
+    ("POST", r"^/api/v1/collections$"),
+    ("PATCH", r"^/api/v1/collections/(?P<id>[^/]+)$"),
+    ("DELETE", r"^/api/v1/collections/(?P<id>[^/]+)$"),
+    ("GET", r"^/api/v1/readlists$"),
+    ("GET", r"^/api/v1/readlists/(?P<id>[^/]+)$"),
+    ("GET", r"^/api/v1/readlists/(?P<id>[^/]+)/books$"),
+    ("GET", r"^/api/v1/readlists/(?P<id>[^/]+)/books/(?P<bookId>[^/]+)/next$"),
+    ("GET", r"^/api/v1/readlists/(?P<id>[^/]+)/books/(?P<bookId>[^/]+)/previous$"),
+    ("POST", r"^/api/v1/readlists$"),
+    ("PATCH", r"^/api/v1/readlists/(?P<id>[^/]+)$"),
+    ("DELETE", r"^/api/v1/readlists/(?P<id>[^/]+)$"),
+    ("GET", r"^/api/v2/authors$"),
+    ("GET", r"^/api/v2/authors/names$"),
+    ("GET", r"^/api/v2/authors/roles$"),
+    ("GET", r"^/api/v2/tags$"),
+    ("GET", r"^/api/v2/genres$"),
+    ("GET", r"^/api/v2/publishers$"),
+    ("GET", r"^/api/v2/languages$"),
+    ("GET", r"^/api/v2/age-ratings$"),
+    ("GET", r"^/api/v2/sharing-labels$"),
+    ("GET", r"^/api/v2/series/release-years$"),
+    ("GET", r"^/api/v2/users/me$"),
+    ("GET", r"^/api/v2/users$"),
+    ("POST", r"^/api/v2/users$"),
+    ("PATCH", r"^/api/v2/users/(?P<id>[^/]+)$"),
+    ("DELETE", r"^/api/v2/users/(?P<id>[^/]+)$"),
+    ("PATCH", r"^/api/v2/users/me/password$"),
+    ("PATCH", r"^/api/v2/users/(?P<id>[^/]+)/password$"),
+    ("GET", r"^/api/v2/users/me/api-keys$"),
+    ("POST", r"^/api/v2/users/me/api-keys$"),
+    ("DELETE", r"^/api/v2/users/me/api-keys/(?P<keyId>[^/]+)$"),
+    ("GET", r"^/api/v2/users/me/authentication-activity$"),
+    ("GET", r"^/api/v2/users/authentication-activity$"),
+    ("GET", r"^/api/v1/settings$"),
+    ("PATCH", r"^/api/v1/settings$"),
+    ("GET", r"^/api/v1/claim$"),
+    ("GET", r"^/api/v1/history$"),
+    ("POST", r"^/api/v1/filesystem$"),
+    ("GET", r"^/actuator/info$"),
+    ("DELETE", r"^/api/v1/tasks$"),
+}
+
+_CONTRACT = {(method, re.compile(pattern)) for method, pattern in KOMGA_CONTRACT}
+
+
+def _contract_match(method: str, path: str) -> bool:
+    return any(method == m and p.match(path) for m, p in _CONTRACT)
+
+
 class Recorder:
     def __init__(self):
         self.method = None
         self.url = None
         self.headers = None
         self.json = None
-        self.response = httpx.Response(200, json={"success": True})
+        self.response = None
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.method = request.method
         self.url = request.url
         self.headers = request.headers
         self.json = json.loads(request.content) if request.content else None
-        return self.response
+        if self.response is not None:
+            return self.response
+        path = request.url.raw_path.split(b"?")[0].decode()
+        if _contract_match(request.method, path):
+            return httpx.Response(200, json={"success": True})
+        return httpx.Response(405, json={"message": "no such Komga route"})
 
 
 @pytest.fixture
@@ -118,7 +215,6 @@ CASES = [
     ("list_series_release_years", {}, "GET", "/api/v2/series/release-years"),
     ("whoami", {}, "GET", "/api/v2/users/me"),
     ("list_users", {}, "GET", "/api/v2/users"),
-    ("get_user", {"user_id": "u 1"}, "GET", "/api/v2/users/u%201"),
     ("create_user", {"user": {"email": "user@example.com"}}, "POST", "/api/v2/users"),
     ("update_user", {"user_id": "u1", "patch": {"email": "new@example.com"}}, "PATCH", "/api/v2/users/u1"),
     ("delete_user", {"user_id": "u1"}, "DELETE", "/api/v2/users/u1"),
@@ -134,7 +230,7 @@ CASES = [
     ("update_server_settings", {"patch": {"application": {}}}, "PATCH", "/api/v1/settings"),
     ("get_server_claim_status", {}, "GET", "/api/v1/claim"),
     ("get_server_history", {}, "GET", "/api/v1/history"),
-    ("get_server_tasks", {}, "GET", "/api/v1/tasks"),
+    ("clear_server_tasks", {}, "DELETE", "/api/v1/tasks"),
     ("list_filesystem", {"path": "/data", "show_files": True}, "POST", "/api/v1/filesystem"),
 ]
 
@@ -145,6 +241,11 @@ async def test_every_tool_makes_expected_request(server, recorder, name, kwargs,
     assert result.data == {"success": True}
     assert recorder.method == method
     assert recorder.url.raw_path.split(b"?")[0].decode() == path
+
+
+def test_parametrized_cases_satisfy_contract():
+    for name, _kwargs, method, path in CASES:
+        assert _contract_match(method, path), f"{name}: {method} {path} not covered by KOMGA_CONTRACT"
 
 
 async def test_search_encodes_body_and_pagination(server, recorder):

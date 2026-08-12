@@ -131,13 +131,13 @@ pagination, and sorting filters.
 
 ### Users and server
 
-`whoami`, `list_users`, `get_user`, `create_user`, `update_user`, `delete_user`,
+`whoami`, `list_users`, `create_user`, `update_user`, `delete_user`,
 `change_my_password`, `change_user_password`, `list_my_api_keys`,
 `create_api_key`, `delete_api_key`, `list_my_auth_activity`, and
 `list_auth_activity` expose user and API-key management.
 
 `get_server_info`, `get_server_settings`, `update_server_settings`,
-`get_server_claim_status`, `get_server_history`, `get_server_tasks`, and
+`get_server_claim_status`, `get_server_history`, `clear_server_tasks`, and
 `list_filesystem` expose server administration and diagnostics.
 
 ## Search conditions

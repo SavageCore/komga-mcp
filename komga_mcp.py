@@ -716,12 +716,6 @@ async def list_users(page: int = 0, size: int = 50, sort: list[str] | None = Non
     return await _req("GET", "/api/v2/users", params=_common_page_params(page, size, sort, unpaged))
 
 
-@mcp.tool(annotations=READONLY)
-async def get_user(user_id: str) -> JSONObj:
-    """Get one user by ID. Requires ADMIN."""
-    return await _req("GET", f"/api/v2/users/{_id(user_id)}")  # type: ignore[return-value]
-
-
 @mcp.tool
 async def create_user(user: JSONObj) -> JSONObj:
     """Create a user. Requires ADMIN."""
@@ -814,10 +808,10 @@ async def get_server_history(page: int = 0, size: int = 50, sort: list[str] | No
     return await _req("GET", "/api/v1/history", params=_common_page_params(page, size, sort, unpaged))
 
 
-@mcp.tool(annotations=READONLY)
-async def get_server_tasks() -> JSONVal:
-    """Get current server task status. Requires ADMIN."""
-    return await _req("GET", "/api/v1/tasks")
+@mcp.tool(annotations=DESTRUCTIVE)
+async def clear_server_tasks() -> JSONVal:
+    """Cancel all queued server tasks and return the number removed. Requires ADMIN."""
+    return await _req("DELETE", "/api/v1/tasks")
 
 
 @mcp.tool(annotations=READONLY)
