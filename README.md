@@ -1,13 +1,13 @@
 # komga-mcp
 
-Part of the [arr-mcps](https://github.com/SavageCore/arr-mcps) collection.
+Part of the [arr-mcps](https://github.com/arr-mcps/arr-mcps) collection.
 MCP server exposing [Komga](https://github.com/gotson/komga)'s REST API as
 tools for browsing and managing comic, manga, BD, magazine, and ebook
 libraries. It is built with [FastMCP](https://gofastmcp.com).
 
 ## Install
 
-Download a wheel from the [latest release](https://github.com/SavageCore/komga-mcp/releases/latest)
+Download a wheel from the [latest release](https://github.com/arr-mcps/komga-mcp/releases/latest)
 and install it as a `uv` tool:
 
 ```bash
